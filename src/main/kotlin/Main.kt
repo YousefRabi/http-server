@@ -14,18 +14,23 @@ fun main() {
     val clientConn = serverSocket.accept() // Wait for connection from client.
     println("accepted new connection")
     val inputStream = clientConn.getInputStream()
-    val requestLine = inputStream.bufferedReader().readLine()
-    val (httpMethod, requestTarget, httpVersion) = requestLine.split(' ')
-    println("httpMethod: $httpMethod\trequestTarget: $requestTarget\thttpVersion: $httpVersion")
+    val reader = inputStream.bufferedReader()
+    val requestLine = reader.readLine() ?: ""
+    val requestTarget = requestLine.split(" ").getOrNull(1) ?: ""
+    println("requestTarget: $requestTarget")
 
-    val response = if (requestTarget == "/") {
-        "HTTP/1.1 200 OK\r\n\r\n"
-    } else {
-        "HTTP/1.1 404 Not Found\r\n\r\n"
+    val response = when {
+        requestTarget == "/" -> "HTTP/1.1 200 OK\r\n\r\n"
+        requestTarget.startsWith("/echo/") -> {
+            val echoedStr = requestTarget.substringAfter("/echo/")
+            val headers = "Content-Type: text/plain\r\nContent-Length: ${echoedStr.toByteArray().size}\r\n"
+            "HTTP/1.1 200 OK\r\n${headers}\r\n$echoedStr"
+        }
+        else -> "HTTP/1.1 404 Not Found\r\n\r\n"
     }
+    println("response: $response")
 
-    val outputStream = clientConn.getOutputStream()
-    outputStream.write(response.toByteArray())
+    clientConn.getOutputStream().write(response.toByteArray())
     println("sent simple response")
     clientConn.close()
 }
