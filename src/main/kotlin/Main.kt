@@ -20,12 +20,27 @@ fun main() {
         val requestTarget = requestLine.split(" ").getOrNull(1) ?: ""
         println("requestTarget: $requestTarget")
 
+        val requestHeaders = mutableMapOf<String, String>()
+        while (true) {
+            val header = reader.readLine() ?: ""
+            if (header.isEmpty()) break
+            val (headerKey, headerValue) = header.split(": ")
+            requestHeaders[headerKey] = headerValue
+        }
+
+        println("requestHeaders: $requestHeaders")
+
         val response = when {
             requestTarget == "/" -> "HTTP/1.1 200 OK\r\n\r\n"
             requestTarget.startsWith("/echo/") -> {
                 val echoedStr = requestTarget.substringAfter("/echo/")
                 val headers = "Content-Type: text/plain\r\nContent-Length: ${echoedStr.toByteArray().size}\r\n"
                 "HTTP/1.1 200 OK\r\n${headers}\r\n$echoedStr"
+            }
+            requestTarget.endsWith("/user-agent") -> {
+                val userAgent = requestHeaders["User-Agent"] ?: ""
+                val headers = "Content-Type: text/plain\r\nContent-Length: ${userAgent.toByteArray().size}\r\n"
+                "HTTP/1.1 200 OK\r\n${headers}\r\n$userAgent"
             }
             else -> "HTTP/1.1 404 Not Found\r\n\r\n"
         }
