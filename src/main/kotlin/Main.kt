@@ -11,10 +11,21 @@ fun main() {
     // ensures that we don't run into 'Address already in use' errors
     serverSocket.reuseAddress = true
 
-    val socket = serverSocket.accept() // Wait for connection from client.
+    val clientConn = serverSocket.accept() // Wait for connection from client.
     println("accepted new connection")
-    val outputStream = socket.getOutputStream()
-    outputStream.write("HTTP/1.1 200 OK\r\n\r\n".toByteArray())
+    val inputStream = clientConn.getInputStream()
+    val requestLine = inputStream.bufferedReader().readLine()
+    val (httpMethod, requestTarget, httpVersion) = requestLine.split(' ')
+    println("httpMethod: $httpMethod\trequestTarget: $requestTarget\thttpVersion: $httpVersion")
+
+    val response = if (requestTarget == "/") {
+        "HTTP/1.1 200 OK\r\n\r\n"
+    } else {
+        "HTTP/1.1 404 Not Found\r\n\r\n"
+    }
+
+    val outputStream = clientConn.getOutputStream()
+    outputStream.write(response.toByteArray())
     println("sent simple response")
-    outputStream.close()
+    clientConn.close()
 }
