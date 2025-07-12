@@ -54,7 +54,6 @@ fun main() {
             val clientConn = serverSocket.accept()
 
             launch(Dispatchers.IO) {
-                println("entered launch")
                 handleConn(clientConn)
             }
         }
