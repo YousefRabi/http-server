@@ -1,12 +1,17 @@
+import kotlinx.cli.ArgParser
+import kotlinx.cli.ArgType
+import kotlinx.cli.required
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
-import kotlinx.coroutines.delay
 import java.net.ServerSocket
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import java.net.Socket
+import java.nio.file.Files
+import java.nio.file.Paths
 
-fun handleConn(clientConn: Socket) {
+fun handleConn(clientConn: Socket, directory: String) {
+    println("Inside handleConn")
     val inputStream = clientConn.getInputStream()
     val reader = inputStream.bufferedReader()
     val requestLine = reader.readLine() ?: ""
@@ -21,28 +26,45 @@ fun handleConn(clientConn: Socket) {
 
     println("requestHeaders: $requestHeaders")
 
-    val response = when {
-        requestTarget == "/" -> "HTTP/1.1 200 OK\r\n\r\n"
+    val responseBytes = when {
+        requestTarget == "/" -> "HTTP/1.1 200 OK\r\n\r\n".toByteArray()
         requestTarget.startsWith("/echo/") -> {
             val echoedStr = requestTarget.substringAfter("/echo/")
             val headers = "Content-Type: text/plain\r\nContent-Length: ${echoedStr.toByteArray().size}\r\n"
-            "HTTP/1.1 200 OK\r\n${headers}\r\n$echoedStr"
+            "HTTP/1.1 200 OK\r\n${headers}\r\n$echoedStr".toByteArray()
         }
         requestTarget.endsWith("/user-agent") -> {
             val userAgent = requestHeaders["User-Agent"] ?: ""
             val headers = "Content-Type: text/plain\r\nContent-Length: ${userAgent.toByteArray().size}\r\n"
-            "HTTP/1.1 200 OK\r\n${headers}\r\n$userAgent"
+            "HTTP/1.1 200 OK\r\n${headers}\r\n$userAgent".toByteArray()
         }
-        else -> "HTTP/1.1 404 Not Found\r\n\r\n"
+        requestTarget.startsWith("/files/") -> {
+            val requestedFile = requestTarget.substringAfter("/files/")
+            val path = Paths.get(directory).resolve(requestedFile)
+            if (Files.exists(path)) {
+                val content = Files.readAllBytes(path)
+                val headers = "Content-Type: application/octet-stream\r\nContent-Length: ${content.size}\r\n"
+                "HTTP/1.1 200 OK\r\n${headers}\r\n".toByteArray() + content
+            } else {
+                "HTTP/1.1 404 Not Found\r\n\r\n".toByteArray()
+            }
+        }
+        else -> "HTTP/1.1 404 Not Found\r\n\r\n".toByteArray()
     }
-    println("response: $response")
+    println("responseBytes: $responseBytes")
 
-    clientConn.getOutputStream().write(response.toByteArray())
+    clientConn.getOutputStream().write(responseBytes)
     println("sent simple response")
     clientConn.close()
 }
 
-fun main() {
+fun main(args: Array<String>) {
+    val parser = ArgParser("server")
+    val directory by parser.option(ArgType.String, description = "The directory of content").required()
+    parser.parse(args)
+
+    println("serving files at directory: $directory")
+
     runBlocking {
         val serverSocket = ServerSocket(4221)
 
@@ -52,9 +74,11 @@ fun main() {
 
         while (true) {
             val clientConn = serverSocket.accept()
+            println("Client connected: $clientConn")
 
             launch(Dispatchers.IO) {
-                handleConn(clientConn)
+                println("Handling connection in I/O thread")
+                handleConn(clientConn, directory)
             }
         }
     }
