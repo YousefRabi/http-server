@@ -70,7 +70,7 @@ fun handleConn(clientConn: Socket, directory: String) {
                 println("fileName: $fileName\trequestBody: $requestBody")
 
                 Files.write(path, byteArray)
-                "HTTP/1.1 201 CREATED\r\n\r\n".toByteArray()
+                "HTTP/1.1 201 Created\r\n\r\n".toByteArray()
             }
             else -> "HTTP/1.1 404 Not Found\r\n\r\n".toByteArray()
         }
