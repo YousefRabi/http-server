@@ -1,6 +1,6 @@
 import kotlinx.cli.ArgParser
 import kotlinx.cli.ArgType
-import kotlinx.cli.required
+import kotlinx.cli.default
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import java.net.ServerSocket
@@ -60,7 +60,7 @@ fun handleConn(clientConn: Socket, directory: String) {
 
 fun main(args: Array<String>) {
     val parser = ArgParser("server")
-    val directory by parser.option(ArgType.String, description = "The directory of content").required()
+    val directory by parser.option(ArgType.String, description = "The directory of content").default("/tmp/")
     parser.parse(args)
 
     println("serving files at directory: $directory")
