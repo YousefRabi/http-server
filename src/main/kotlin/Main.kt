@@ -23,54 +23,88 @@ fun handleConn(clientConn: Socket, directory: String) {
     println("method: ${httpRequest.method}\turl: ${httpRequest.url}\theaders: ${httpRequest.headers}")
     println("body: ${httpRequest.body}")
 
-    val responseBytes = when (method) {
+    val httpResponse = route(method, url, headersMap, body, directory)
+
+    outputStream.write(httpResponse.toByteArray())
+    println("sent response")
+    outputStream.close()
+}
+
+fun route(method: String, url: String, headersMap: Map<String, String>, body: String, directory: String): HttpResponse {
+    val responseHeaders = mutableMapOf<String, String>()
+
+    val httpResponse = when (method) {
         "GET" -> when {
-            url == "/" -> "HTTP/1.1 200 OK\r\n\r\n".toByteArray()
+            url == "/" -> HttpResponse(status=HttpStatus.OK)
             url.startsWith("/echo/") -> {
                 val echoedStr = url.substringAfter("/echo/")
-                var headers = "Content-Type: text/plain\r\n"
-                headers += if (headersMap.getOrDefault("Accept-Encoding", "").contains("gzip")) {
-                    "Content-Encoding: gzip\r\n"
-                } else "Content-Length: ${echoedStr.toByteArray().size}\r\n"
-                "HTTP/1.1 200 OK\r\n${headers}\r\n$echoedStr".toByteArray()
+                responseHeaders["Content-Type"] = "text/plain"
+                val gzipEncoded = headersMap.getOrDefault("Accept-Encoding", "").contains("gzip")
+                if (gzipEncoded) {
+                    responseHeaders["Content-Encoding"] = "gzip"
+                } else responseHeaders["Content-Length"] = echoedStr.toByteArray().size.toString()
+
+                HttpResponse(
+                    status=HttpStatus.OK,
+                    headers=responseHeaders,
+                    body=if (gzipEncoded) body.toByteArray() else ByteArray(0),)
             }
             url.endsWith("/user-agent") -> {
-                val userAgent = headersMap["User-Agent"] ?: ""
-                val headers = "Content-Type: text/plain\r\nContent-Length: ${userAgent.toByteArray().size}\r\n"
-                "HTTP/1.1 200 OK\r\n${headers}\r\n$userAgent".toByteArray()
+                val userAgent = (headersMap["User-Agent"] ?: "").toByteArray()
+                responseHeaders["Content-Type"] = "text/plain"
+                responseHeaders["Content-Length"] = userAgent.size.toString()
+
+                HttpResponse(
+                    status=HttpStatus.OK,
+                    headers=responseHeaders,
+                    body=userAgent,
+                )
             }
             url.startsWith("/files/") -> {
                 val requestedFile = url.substringAfter("/files/")
                 val path = Paths.get(directory).resolve(requestedFile)
                 if (Files.exists(path)) {
                     val content = Files.readAllBytes(path)
-                    val headers = "Content-Type: application/octet-stream\r\nContent-Length: ${content.size}\r\n"
-                    "HTTP/1.1 200 OK\r\n${headers}\r\n".toByteArray() + content
+                    responseHeaders["Content-Type"] = "application/octet-stream"
+                    responseHeaders["Content-Length"] = content.size.toString()
+                    HttpResponse(
+                        status=HttpStatus.OK,
+                        headers=responseHeaders,
+                        body=content,
+                    )
                 } else {
-                    "HTTP/1.1 404 Not Found\r\n\r\n".toByteArray()
+                    HttpResponse(
+                        status=HttpStatus.NOT_FOUND,
+                    )
                 }
             }
-            else -> "HTTP/1.1 404 Not Found\r\n\r\n".toByteArray()
+            else -> HttpResponse(status=HttpStatus.NOT_FOUND,)
         }
         "POST" -> when {
             url.startsWith("/files/") -> {
                 val fileName = url.substringAfter("/files/")
                 val path = Paths.get(directory).resolve(fileName)
-                if (body == null) {
-                    "HTTP/1.1 400 Bad Request\r\n\r\n".toByteArray()
+                if (body.isEmpty()) {
+                    HttpResponse(status=HttpStatus.BAD_REQUEST,)
                 } else {
                     Files.write(path, body.toByteArray())
-                    "HTTP/1.1 201 Created\r\n\r\n".toByteArray()
+                    HttpResponse(
+                        status=HttpStatus.CREATED,
+                    )
                 }
             }
-            else -> "HTTP/1.1 404 Not Found\r\n\r\n".toByteArray()
+            else -> HttpResponse(status=HttpStatus.NOT_FOUND,)
         }
-        else -> "HTTP/1.1 405 Method Not Allowed\r\nAllow: GET, POST\r\n\r\n".toByteArray()
+        else -> {
+            responseHeaders["Allow"] = "GET, POST"
+            HttpResponse(
+                status=HttpStatus.METHOD_NOT_ALLOWED,
+                headers=responseHeaders,
+            )
+        }
     }
 
-    outputStream.write(responseBytes)
-    println("sent response")
-    outputStream.close()
+    return httpResponse
 }
 
 fun main(args: Array<String>) {

@@ -4,7 +4,7 @@ data class HttpRequest(
     val method: String,
     val url: String,
     val headers: Map<String, String> = emptyMap<String, String>(),
-    val body: String? = null
+    val body: String
 )
 
 fun BufferedReader.parseHttpRequest(): HttpRequest {
@@ -23,8 +23,8 @@ fun BufferedReader.parseHttpRequest(): HttpRequest {
             val charArray = CharArray(contentLength)
             read(charArray, 0, contentLength)
             String(charArray)
-        } else null
-    } else null
+        } else ""
+    } else ""
 
     return HttpRequest(method, url, headers, body)
 }
