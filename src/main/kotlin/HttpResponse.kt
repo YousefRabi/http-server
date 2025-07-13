@@ -14,7 +14,7 @@ class HttpResponse(
     fun toByteArray(): ByteArray {
         var outString = "HTTP/1.1 ${status.code} ${status.msg}\r\n"
         if (headers.isNotEmpty()) {
-            outString += headers.map { "${it.key}: ${it.value}" }.joinToString(",")
+            outString += headers.map { "${it.key}: ${it.value}\r\n" }.joinToString(",")
         }
         outString += "\r\n"
 
