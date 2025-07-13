@@ -18,7 +18,7 @@ fun handleConn(clientConn: Socket, directory: String) {
     val httpRequest = reader.parseHttpRequest()
     val method = httpRequest.method
     val url = httpRequest.url
-    val headers = httpRequest.headers
+    val headersMap = httpRequest.headers
     val body = httpRequest.body
     println("method: ${httpRequest.method}\turl: ${httpRequest.url}\theaders: ${httpRequest.headers}")
     println("body: ${httpRequest.body}")
@@ -28,11 +28,14 @@ fun handleConn(clientConn: Socket, directory: String) {
             url == "/" -> "HTTP/1.1 200 OK\r\n\r\n".toByteArray()
             url.startsWith("/echo/") -> {
                 val echoedStr = url.substringAfter("/echo/")
-                val headers = "Content-Type: text/plain\r\nContent-Length: ${echoedStr.toByteArray().size}\r\n"
+                var headers = "Content-Type: text/plain\r\n"
+                headers += if (headersMap.getOrDefault("Accept-Encoding", "").contains("gzip")) {
+                    "Content-Encoding: gzip"
+                } else "Content-Length: ${echoedStr.toByteArray().size}\r\n"
                 "HTTP/1.1 200 OK\r\n${headers}\r\n$echoedStr".toByteArray()
             }
             url.endsWith("/user-agent") -> {
-                val userAgent = headers["User-Agent"] ?: ""
+                val userAgent = headersMap["User-Agent"] ?: ""
                 val headers = "Content-Type: text/plain\r\nContent-Length: ${userAgent.toByteArray().size}\r\n"
                 "HTTP/1.1 200 OK\r\n${headers}\r\n$userAgent".toByteArray()
             }
