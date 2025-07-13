@@ -6,8 +6,6 @@ import kotlinx.coroutines.IO
 import java.net.ServerSocket
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
-import java.io.BufferedInputStream
-import java.io.BufferedReader
 import java.net.Socket
 import java.nio.file.Files
 import java.nio.file.Paths
@@ -16,34 +14,30 @@ fun handleConn(clientConn: Socket, directory: String) {
     println("Inside handleConn")
     val inputStream = clientConn.getInputStream()
     val outputStream = clientConn.getOutputStream()
-    val reader = inputStream.buffered()
-    val requestLineBytes = readUntilEndOfHeaders(reader)
-    val requestPlusHeaderLines = String(requestLineBytes, Charsets.US_ASCII).lines()
-    val (httpMethod, requestTarget, _) = requestPlusHeaderLines.first().split(" ")
-    println("httpMethod: $httpMethod\trequestTarget: $requestTarget")
+    val reader = inputStream.bufferedReader()
+    val httpRequest = reader.parseHttpRequest()
+    val method = httpRequest.method
+    val url = httpRequest.url
+    val headers = httpRequest.headers
+    val body = httpRequest.body
+    println("method: ${httpRequest.method}\turl: ${httpRequest.url}\theaders: ${httpRequest.headers}")
+    println("body: ${httpRequest.body}")
 
-    val requestHeaders = requestPlusHeaderLines.drop(1)
-        .map { it.split(": ", limit = 2) }
-        .filter { it.size == 2 }
-        .associate { it[0] to it[1] }
-
-    println("requestHeaders: $requestHeaders")
-
-    val responseBytes = when (httpMethod) {
+    val responseBytes = when (method) {
         "GET" -> when {
-            requestTarget == "/" -> "HTTP/1.1 200 OK\r\n\r\n".toByteArray()
-            requestTarget.startsWith("/echo/") -> {
-                val echoedStr = requestTarget.substringAfter("/echo/")
+            url == "/" -> "HTTP/1.1 200 OK\r\n\r\n".toByteArray()
+            url.startsWith("/echo/") -> {
+                val echoedStr = url.substringAfter("/echo/")
                 val headers = "Content-Type: text/plain\r\nContent-Length: ${echoedStr.toByteArray().size}\r\n"
                 "HTTP/1.1 200 OK\r\n${headers}\r\n$echoedStr".toByteArray()
             }
-            requestTarget.endsWith("/user-agent") -> {
-                val userAgent = requestHeaders["User-Agent"] ?: ""
+            url.endsWith("/user-agent") -> {
+                val userAgent = headers["User-Agent"] ?: ""
                 val headers = "Content-Type: text/plain\r\nContent-Length: ${userAgent.toByteArray().size}\r\n"
                 "HTTP/1.1 200 OK\r\n${headers}\r\n$userAgent".toByteArray()
             }
-            requestTarget.startsWith("/files/") -> {
-                val requestedFile = requestTarget.substringAfter("/files/")
+            url.startsWith("/files/") -> {
+                val requestedFile = url.substringAfter("/files/")
                 val path = Paths.get(directory).resolve(requestedFile)
                 if (Files.exists(path)) {
                     val content = Files.readAllBytes(path)
@@ -56,38 +50,24 @@ fun handleConn(clientConn: Socket, directory: String) {
             else -> "HTTP/1.1 404 Not Found\r\n\r\n".toByteArray()
         }
         "POST" -> when {
-            requestTarget.startsWith("/files/") -> {
-                val fileName = requestTarget.substringAfter("/files/")
+            url.startsWith("/files/") -> {
+                val fileName = url.substringAfter("/files/")
                 val path = Paths.get(directory).resolve(fileName)
-                val numBytes = requestHeaders["Content-Length"]?.toInt() ?: 0
-                val byteArray = ByteArray(numBytes)
-                val requestBody = reader.read(byteArray)
-
-                Files.write(path, byteArray)
-                "HTTP/1.1 201 Created\r\n\r\n".toByteArray()
+                if (body == null) {
+                    "HTTP/1.1 400 Bad Request\r\n\r\n".toByteArray()
+                } else {
+                    Files.write(path, body.toByteArray())
+                    "HTTP/1.1 201 Created\r\n\r\n".toByteArray()
+                }
             }
             else -> "HTTP/1.1 404 Not Found\r\n\r\n".toByteArray()
         }
         else -> "HTTP/1.1 405 Method Not Allowed\r\nAllow: GET, POST\r\n\r\n".toByteArray()
     }
-    println("responseBytes: $responseBytes")
 
     outputStream.write(responseBytes)
-    println("sent simple response")
+    println("sent response")
     outputStream.close()
-}
-
-fun readUntilEndOfHeaders(reader: BufferedInputStream): ByteArray {
-    val bytes = mutableListOf<Byte>()
-    val crlfcrlf = "\r\n\r\n".toByteArray(Charsets.US_ASCII)
-    var byte = reader.read()
-    while (byte != -1) {
-        println("byte: $byte")
-        bytes.add(byte.toByte())
-        if (bytes.size > 4 && bytes.takeLast(4).toByteArray().contentEquals(crlfcrlf)) break
-        byte = reader.read()
-    }
-    return bytes.toByteArray()
 }
 
 fun main(args: Array<String>) {
