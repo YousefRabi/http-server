@@ -10,6 +10,8 @@ import java.net.Socket
 import java.nio.file.Files
 import java.nio.file.Paths
 
+val supportedEncodings = setOf("gzip")
+
 fun handleConn(clientConn: Socket, directory: String) {
     println("Inside handleConn")
     val inputStream = clientConn.getInputStream()
@@ -24,7 +26,6 @@ fun handleConn(clientConn: Socket, directory: String) {
     println("body: ${httpRequest.body}")
 
     val httpResponse = route(method, url, headersMap, body, directory)
-    println("httpResponse: ${httpResponse.toByteArray()}")
 
     outputStream.write(httpResponse.toByteArray())
     println("sent response")
@@ -41,12 +42,10 @@ fun route(method: String, url: String, headersMap: Map<String, String>, body: St
                 val echoedStr = url.substringAfter("/echo/")
                 responseHeaders["Content-Type"] = "text/plain"
                 responseHeaders["Content-Length"] = echoedStr.length.toString()
-                val gzipEncoded = headersMap.getOrDefault("Accept-Encoding", "").contains("gzip")
-                if (gzipEncoded) {
-                    responseHeaders["Content-Encoding"] = "gzip"
+                val acceptedSupportedEncodings = headersMap.getOrDefault("Accept-Encoding", "").split(", ").toSet().intersect(supportedEncodings)
+                if (acceptedSupportedEncodings.isNotEmpty()) {
+                    responseHeaders["Content-Encoding"] = acceptedSupportedEncodings.joinToString(", ")
                 }
-
-                println("gzipEncoded: $gzipEncoded")
 
                 HttpResponse(
                     status=HttpStatus.OK,
