@@ -6,6 +6,7 @@ import kotlinx.coroutines.IO
 import java.net.ServerSocket
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import java.io.BufferedInputStream
 import java.io.BufferedReader
 import java.net.Socket
 import java.nio.file.Files
@@ -15,15 +16,13 @@ fun handleConn(clientConn: Socket, directory: String) {
     println("Inside handleConn")
     val inputStream = clientConn.getInputStream()
     val outputStream = clientConn.getOutputStream()
-    println("inputStream available: ${inputStream.available()}")
-    val reader = inputStream.bufferedReader()
-    val requestLine = reader.readLine() ?: ""
-    val (httpMethod, requestTarget, _) = requestLine.split(" ")
+    val reader = inputStream.buffered()
+    val requestLineBytes = readUntilEndOfHeaders(reader)
+    val requestPlusHeaderLines = String(requestLineBytes, Charsets.US_ASCII).lines()
+    val (httpMethod, requestTarget, _) = requestPlusHeaderLines.first().split(" ")
     println("httpMethod: $httpMethod\trequestTarget: $requestTarget")
 
-    val requestHeaderLines = readToTheNextEmptyLine(reader)
-    println("requestHeaderLines: $requestHeaderLines")
-    val requestHeaders = requestHeaderLines
+    val requestHeaders = requestPlusHeaderLines.drop(1)
         .map { it.split(": ", limit = 2) }
         .filter { it.size == 2 }
         .associate { it[0] to it[1] }
@@ -60,14 +59,9 @@ fun handleConn(clientConn: Socket, directory: String) {
             requestTarget.startsWith("/files/") -> {
                 val fileName = requestTarget.substringAfter("/files/")
                 val path = Paths.get(directory).resolve(fileName)
-                println("Post to $path")
                 val numBytes = requestHeaders["Content-Length"]?.toInt() ?: 0
-                println("numBytes: $numBytes")
-                println("available bytes: ${inputStream.available()}")
-                val charArray = CharArray(numBytes)
-                val requestBody = reader.read(charArray)
-                val byteArray = charArray.map { it.code.toByte() }.toByteArray()
-                println("fileName: $fileName\trequestBody: $requestBody")
+                val byteArray = ByteArray(numBytes)
+                val requestBody = reader.read(byteArray)
 
                 Files.write(path, byteArray)
                 "HTTP/1.1 201 Created\r\n\r\n".toByteArray()
@@ -83,15 +77,17 @@ fun handleConn(clientConn: Socket, directory: String) {
     outputStream.close()
 }
 
-fun readToTheNextEmptyLine(reader: BufferedReader): List<String> {
-    val lines = mutableListOf<String>()
-    var line = reader.readLine() ?: ""
-    while (line.isNotEmpty()) {
-        lines.add(line)
-        if (line.isEmpty()) break
-        line = reader.readLine()
+fun readUntilEndOfHeaders(reader: BufferedInputStream): ByteArray {
+    val bytes = mutableListOf<Byte>()
+    val crlfcrlf = "\r\n\r\n".toByteArray(Charsets.US_ASCII)
+    var byte = reader.read()
+    while (byte != -1) {
+        println("byte: $byte")
+        bytes.add(byte.toByte())
+        if (bytes.size > 4 && bytes.takeLast(4).toByteArray().contentEquals(crlfcrlf)) break
+        byte = reader.read()
     }
-    return lines
+    return bytes.toByteArray()
 }
 
 fun main(args: Array<String>) {
