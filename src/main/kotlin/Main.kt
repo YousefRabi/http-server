@@ -30,7 +30,7 @@ fun handleConn(clientConn: Socket, directory: String) {
                 val echoedStr = url.substringAfter("/echo/")
                 var headers = "Content-Type: text/plain\r\n"
                 headers += if (headersMap.getOrDefault("Accept-Encoding", "").contains("gzip")) {
-                    "Content-Encoding: gzip"
+                    "Content-Encoding: gzip\r\n"
                 } else "Content-Length: ${echoedStr.toByteArray().size}\r\n"
                 "HTTP/1.1 200 OK\r\n${headers}\r\n$echoedStr".toByteArray()
             }
