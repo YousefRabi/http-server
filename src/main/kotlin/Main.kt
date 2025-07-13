@@ -40,17 +40,19 @@ fun route(method: String, url: String, headersMap: Map<String, String>, body: St
             url.startsWith("/echo/") -> {
                 val echoedStr = url.substringAfter("/echo/")
                 responseHeaders["Content-Type"] = "text/plain"
+                responseHeaders["Content-Length"] = echoedStr.length.toString()
                 val gzipEncoded = headersMap.getOrDefault("Accept-Encoding", "").contains("gzip")
                 if (gzipEncoded) {
                     responseHeaders["Content-Encoding"] = "gzip"
-                } else responseHeaders["Content-Length"] = echoedStr.toByteArray().size.toString()
+                }
 
                 println("gzipEncoded: $gzipEncoded")
 
                 HttpResponse(
                     status=HttpStatus.OK,
                     headers=responseHeaders,
-                    body=if (gzipEncoded) body.toByteArray() else ByteArray(0),)
+                    body=echoedStr.toByteArray(),
+                )
 
             }
             url.endsWith("/user-agent") -> {
