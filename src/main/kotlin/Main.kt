@@ -24,6 +24,7 @@ fun handleConn(clientConn: Socket, directory: String) {
     println("body: ${httpRequest.body}")
 
     val httpResponse = route(method, url, headersMap, body, directory)
+    println("httpResponse: ${httpResponse.toByteArray()}")
 
     outputStream.write(httpResponse.toByteArray())
     println("sent response")
@@ -44,10 +45,13 @@ fun route(method: String, url: String, headersMap: Map<String, String>, body: St
                     responseHeaders["Content-Encoding"] = "gzip"
                 } else responseHeaders["Content-Length"] = echoedStr.toByteArray().size.toString()
 
+                println("gzipEncoded: $gzipEncoded")
+
                 HttpResponse(
                     status=HttpStatus.OK,
                     headers=responseHeaders,
                     body=if (gzipEncoded) body.toByteArray() else ByteArray(0),)
+
             }
             url.endsWith("/user-agent") -> {
                 val userAgent = (headersMap["User-Agent"] ?: "").toByteArray()
