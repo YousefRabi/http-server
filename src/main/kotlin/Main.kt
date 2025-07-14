@@ -19,18 +19,25 @@ fun handleConn(clientConn: Socket, directory: String) {
     val inputStream = clientConn.getInputStream()
     val outputStream = clientConn.getOutputStream()
     val reader = inputStream.bufferedReader()
-    val httpRequest = reader.parseHttpRequest()
-    val method = httpRequest.method
-    val url = httpRequest.url
-    val headersMap = httpRequest.headers
-    val body = httpRequest.body
-    println("method: ${httpRequest.method}\turl: ${httpRequest.url}\theaders: ${httpRequest.headers}")
-    println("body: ${httpRequest.body}")
 
-    val httpResponse = route(method, url, headersMap, body, directory)
+    while (true) {
+        val httpRequest = reader.parseHttpRequest()
+        val method = httpRequest.method
+        val url = httpRequest.url
+        val headersMap = httpRequest.headers
+        val body = httpRequest.body
+        println("method: ${httpRequest.method}\turl: ${httpRequest.url}\theaders: ${httpRequest.headers}")
+        println("body: ${httpRequest.body}")
 
-    outputStream.write(httpResponse.toByteArray())
-    println("sent response")
+        val httpResponse = route(method, url, headersMap, body, directory)
+
+        outputStream.write(httpResponse.toByteArray())
+        println("sent response")
+        outputStream.flush()
+
+        if (headersMap["Connection"] == "close") break
+    }
+
     outputStream.close()
 }
 
