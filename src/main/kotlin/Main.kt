@@ -59,7 +59,7 @@ fun route(method: String, url: String, headersMap: Map<String, String>, body: St
 
     val httpResponse = when (method) {
         "GET" -> when {
-            url == "/" -> HttpResponse(status=HttpStatus.OK)
+            url == "/" -> HttpResponse(status=HttpStatus.OK, headers=responseHeaders)
             url.startsWith("/echo/") -> {
                 val echoedStr = url.substringAfter("/echo/")
                 responseHeaders["Content-Type"] = "text/plain"
