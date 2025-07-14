@@ -21,7 +21,12 @@ fun handleConn(clientConn: Socket, directory: String) {
     val reader = inputStream.bufferedReader()
 
     while (true) {
+        println("Entered loop")
+        println("inputStream: ${inputStream.available()}")
         val httpRequest = reader.parseHttpRequest()
+
+        if (httpRequest == null) break
+
         val method = httpRequest.method
         val url = httpRequest.url
         val headersMap = httpRequest.headers
@@ -41,6 +46,7 @@ fun handleConn(clientConn: Socket, directory: String) {
         if (headersMap["Connection"] == "close") break
     }
 
+    println("Exited loop")
     outputStream.close()
 }
 
@@ -152,10 +158,19 @@ fun main(args: Array<String>) {
             val clientConn = serverSocket.accept()
             println("Client connected: $clientConn")
 
+            println("About to call launch for : $clientConn")
             launch(Dispatchers.IO) {
-                println("Handling connection in I/O thread")
-                handleConn(clientConn, directory)
+                try {
+                    println("About to start coroutine")
+                    println("Handling connection in I/O thread: ${Thread.currentThread().name}")
+                    handleConn(clientConn, directory)
+                    println("Coroutine finished")
+                } catch (e: Exception) {
+                    println("Caught exception: ${e::class.simpleName}: ${e.message}")
+                    e.printStackTrace()
+                }
             }
+            println("Called launch, continuing loop")
         }
     }
 }

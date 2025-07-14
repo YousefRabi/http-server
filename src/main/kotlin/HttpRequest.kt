@@ -7,8 +7,11 @@ data class HttpRequest(
     val body: String
 )
 
-fun BufferedReader.parseHttpRequest(): HttpRequest {
-    val requestLine = readLine() ?: ""
+fun BufferedReader.parseHttpRequest(): HttpRequest? {
+    val requestLine = readLine()
+
+    if (requestLine == null) return null
+
     val (method, url, _) = requestLine.split(" ")
 
     val headers = lineSequence()
