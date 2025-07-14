@@ -86,7 +86,3 @@ curl http://localhost:4221/files/test.txt
   - Kotlin Standard Library
   - Kotlinx Coroutines
   - Kotlinx CLI
-
-## Development
-
-This project was built as part of a learning exercise on CodeCrafters to understand HTTP protocol implementation and Kotlin concurrency patterns.
