@@ -1,38 +1,92 @@
-[![progress-banner](https://backend.codecrafters.io/progress/http-server/32cb6812-7f33-4435-b016-5715385c52ea)](https://app.codecrafters.io/users/codecrafters-bot?r=2qF)
+# HTTP Server in Kotlin
 
-This is a starting point for Kotlin solutions to the
-["Build Your Own HTTP server" Challenge](https://app.codecrafters.io/courses/http-server/overview).
+A lightweight HTTP server implementation built from scratch in Kotlin, featuring concurrent request handling and file operations.
 
-[HTTP](https://en.wikipedia.org/wiki/Hypertext_Transfer_Protocol) is the
-protocol that powers the web. In this challenge, you'll build a HTTP/1.1 server
-that is capable of serving multiple clients.
+## Features
 
-Along the way you'll learn about TCP servers,
-[HTTP request syntax](https://www.w3.org/Protocols/rfc2616/rfc2616-sec5.html),
-and more.
+- **HTTP/1.1 Protocol Support**: Handles GET and POST requests
+- **Concurrent Request Handling**: Uses Kotlin coroutines for handling multiple clients
+- **GZIP Compression**: Supports gzip encoding for response compression
+- **File Operations**: Read and write files through HTTP endpoints
+- **Persistent Connections**: Supports keep-alive connections
 
-**Note**: If you're viewing this repo on GitHub, head over to
-[codecrafters.io](https://codecrafters.io) to try the challenge.
+## Supported Endpoints
 
-# Passing the first stage
+### GET Endpoints
+- `GET /` - Returns 200 OK
+- `GET /echo/{message}` - Echoes back the message with optional gzip compression
+- `GET /user-agent` - Returns the client's User-Agent header
+- `GET /files/{filename}` - Serves files from the configured directory
 
-The entry point for your HTTP server implementation is in
-`src/main/kotlin/Main.kt`. Study and uncomment the relevant code, and push your
-changes to pass the first stage:
+### POST Endpoints
+- `POST /files/{filename}` - Saves request body to a file in the configured directory
 
-```sh
-git commit -am "pass 1st stage" # any msg
-git push origin master
+## Quick Start
+
+### Prerequisites
+- Java 8 or higher
+- Maven
+
+### Building the Project
+```bash
+mvn compile
+mvn package
 ```
 
-Time to move on to the next stage!
+### Running the Server
+```bash
+java -jar target/build-your-own-http-server.jar --directory /path/to/files
+```
 
-# Stage 2 & beyond
+The server runs on port 4221 by default.
 
-Note: This section is for stages 2 and beyond.
+### Usage Examples
 
-1. Ensure you have `kotlin (>=2.0)` installed locally
-1. Run `./your_program.sh` to run your program, which is implemented in
-   `src/main/kotlin/Main.kt`.
-1. Commit your changes and run `git push origin master` to submit your solution
-   to CodeCrafters. Test output will be streamed to your terminal.
+```bash
+# Basic health check
+curl http://localhost:4221/
+
+# Echo a message
+curl http://localhost:4221/echo/hello
+
+# Echo with gzip compression
+curl -H "Accept-Encoding: gzip" http://localhost:4221/echo/hello
+
+# Get user agent
+curl http://localhost:4221/user-agent
+
+# Upload a file
+echo "Hello World" | curl -X POST http://localhost:4221/files/test.txt --data-binary @-
+
+# Download a file
+curl http://localhost:4221/files/test.txt
+```
+
+## Organization
+
+- **Main.kt**: Server initialization and connection handling
+- **HttpRequest.kt**: HTTP request parsing and data structures
+- **HttpResponse.kt**: HTTP response formatting and status codes
+- **Routing**: URL-based request routing with method support
+
+### Key Components
+
+- **Coroutines**: Each client connection is handled in a separate coroutine for concurrency
+- **Socket Programming**: Raw socket handling for low-level HTTP protocol implementation
+- **HTTP Parsing**: Custom HTTP request parser that handles headers and body
+- **File I/O**: Direct file system operations for file serving and storage
+
+## Technical Details
+
+- **Language**: Kotlin
+- **Concurrency**: Kotlinx Coroutines
+- **Build Tool**: Maven
+- **JVM Target**: Java 8
+- **Dependencies**: 
+  - Kotlin Standard Library
+  - Kotlinx Coroutines
+  - Kotlinx CLI
+
+## Development
+
+This project was built as part of a learning exercise on CodeCrafters to understand HTTP protocol implementation and Kotlin concurrency patterns.
