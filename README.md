@@ -62,7 +62,7 @@ echo "Hello World" | curl -X POST http://localhost:4221/files/test.txt --data-bi
 curl http://localhost:4221/files/test.txt
 ```
 
-## Organization
+## Architecture
 
 - **Main.kt**: Server initialization and connection handling
 - **HttpRequest.kt**: HTTP request parsing and data structures
