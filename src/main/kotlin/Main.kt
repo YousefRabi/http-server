@@ -15,14 +15,11 @@ import java.util.zip.GZIPOutputStream
 val supportedEncodings = setOf("gzip")
 
 fun handleConn(clientConn: Socket, directory: String) {
-    println("Inside handleConn")
     val inputStream = clientConn.getInputStream()
     val outputStream = clientConn.getOutputStream()
     val reader = inputStream.bufferedReader()
 
     while (true) {
-        println("Entered loop")
-        println("inputStream: ${inputStream.available()}")
         val httpRequest = reader.parseHttpRequest()
 
         if (httpRequest == null) break
@@ -31,22 +28,18 @@ fun handleConn(clientConn: Socket, directory: String) {
         val url = httpRequest.url
         val headersMap = httpRequest.headers
         val body = httpRequest.body
-        println("method: ${httpRequest.method}\turl: ${httpRequest.url}\theaders: ${httpRequest.headers}")
-        println("body: ${httpRequest.body}")
 
         val httpResponse = route(method, url, headersMap, body, directory)
         val responseBytes = httpResponse.toByteArray()
 
         if (responseBytes.isNotEmpty()) {
             outputStream.write(httpResponse.toByteArray())
-            println("sent response")
             outputStream.flush()
         }
 
         if (headersMap["Connection"] == "close") break
     }
 
-    println("Exited loop")
     outputStream.close()
 }
 
@@ -149,26 +142,17 @@ fun main(args: Array<String>) {
     val directory by parser.option(ArgType.String, description = "The directory of content").default("/tmp/")
     parser.parse(args)
 
-    println("serving files at directory: $directory")
-
     runBlocking {
         val serverSocket = ServerSocket(4221)
 
-        // Since the tester restarts your program quite often, setting SO_REUSEADDR
-        // ensures that we don't run into 'Address already in use' errors
         serverSocket.reuseAddress = true
 
         while (true) {
             val clientConn = serverSocket.accept()
-            println("Client connected: $clientConn")
 
-            println("About to call launch for : $clientConn")
             launch(Dispatchers.IO) {
                 try {
-                    println("About to start coroutine")
-                    println("Handling connection in I/O thread: ${Thread.currentThread().name}")
                     handleConn(clientConn, directory)
-                    println("Coroutine finished")
                 } catch (e: Exception) {
                     println("Caught exception: ${e::class.simpleName}: ${e.message}")
                     e.printStackTrace()
@@ -176,7 +160,6 @@ fun main(args: Array<String>) {
                     clientConn.close()
                 }
             }
-            println("Called launch, continuing loop")
         }
     }
 }
