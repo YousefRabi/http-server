@@ -53,6 +53,10 @@ fun handleConn(clientConn: Socket, directory: String) {
 fun route(method: String, url: String, headersMap: Map<String, String>, body: String, directory: String): HttpResponse {
     val responseHeaders = mutableMapOf<String, String>()
 
+    if (headersMap["Connection"] == "close") {
+        responseHeaders["Connection"] = "close"
+    }
+
     val httpResponse = when (method) {
         "GET" -> when {
             url == "/" -> HttpResponse(status=HttpStatus.OK)
