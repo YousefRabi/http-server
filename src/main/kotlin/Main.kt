@@ -6,9 +6,11 @@ import kotlinx.coroutines.IO
 import java.net.ServerSocket
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import java.io.ByteArrayOutputStream
 import java.net.Socket
 import java.nio.file.Files
 import java.nio.file.Paths
+import java.util.zip.GZIPOutputStream
 
 val supportedEncodings = setOf("gzip")
 
@@ -42,15 +44,19 @@ fun route(method: String, url: String, headersMap: Map<String, String>, body: St
                 val echoedStr = url.substringAfter("/echo/")
                 responseHeaders["Content-Type"] = "text/plain"
                 responseHeaders["Content-Length"] = echoedStr.length.toString()
-                val acceptedSupportedEncodings = headersMap.getOrDefault("Accept-Encoding", "").split(", ").toSet().intersect(supportedEncodings)
-                if (acceptedSupportedEncodings.isNotEmpty()) {
-                    responseHeaders["Content-Encoding"] = acceptedSupportedEncodings.joinToString(", ")
+                val acceptedSupportedEncodings = headersMap["Accept-Encoding"]?.split(", ")?.toSet()?.intersect(supportedEncodings) ?: emptySet()
+                var responseBody: ByteArray
+                if (acceptedSupportedEncodings.contains("gzip")) {
+                    responseBody = gzip(echoedStr)
+                    responseHeaders["Content-Encoding"] = "gzip"
+                } else {
+                    responseBody = echoedStr.toByteArray()
                 }
 
                 HttpResponse(
                     status=HttpStatus.OK,
                     headers=responseHeaders,
-                    body=echoedStr.toByteArray(),
+                    body=responseBody,
                 )
 
             }
@@ -110,6 +116,12 @@ fun route(method: String, url: String, headersMap: Map<String, String>, body: St
     }
 
     return httpResponse
+}
+
+fun gzip(content: String): ByteArray {
+    val bos = ByteArrayOutputStream()
+    GZIPOutputStream(bos).bufferedWriter(Charsets.UTF_8).use { it.write(content) }
+    return bos.toByteArray()
 }
 
 fun main(args: Array<String>) {
