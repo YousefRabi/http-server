@@ -168,6 +168,8 @@ fun main(args: Array<String>) {
                 } catch (e: Exception) {
                     println("Caught exception: ${e::class.simpleName}: ${e.message}")
                     e.printStackTrace()
+                } finally {
+                    clientConn.close()
                 }
             }
             println("Called launch, continuing loop")
