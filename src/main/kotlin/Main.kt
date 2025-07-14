@@ -43,7 +43,6 @@ fun route(method: String, url: String, headersMap: Map<String, String>, body: St
             url.startsWith("/echo/") -> {
                 val echoedStr = url.substringAfter("/echo/")
                 responseHeaders["Content-Type"] = "text/plain"
-                responseHeaders["Content-Length"] = echoedStr.length.toString()
                 val acceptedSupportedEncodings = headersMap["Accept-Encoding"]?.split(", ")?.toSet()?.intersect(supportedEncodings) ?: emptySet()
                 var responseBody: ByteArray
                 if (acceptedSupportedEncodings.contains("gzip")) {
@@ -53,6 +52,7 @@ fun route(method: String, url: String, headersMap: Map<String, String>, body: St
                     responseBody = echoedStr.toByteArray()
                 }
 
+                responseHeaders["Content-Length"] = responseBody.size.toString()
                 HttpResponse(
                     status=HttpStatus.OK,
                     headers=responseHeaders,
