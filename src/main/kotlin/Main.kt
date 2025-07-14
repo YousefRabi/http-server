@@ -30,10 +30,13 @@ fun handleConn(clientConn: Socket, directory: String) {
         println("body: ${httpRequest.body}")
 
         val httpResponse = route(method, url, headersMap, body, directory)
+        val responseBytes = httpResponse.toByteArray()
 
-        outputStream.write(httpResponse.toByteArray())
-        println("sent response")
-        outputStream.flush()
+        if (responseBytes.isNotEmpty()) {
+            outputStream.write(httpResponse.toByteArray())
+            println("sent response")
+            outputStream.flush()
+        }
 
         if (headersMap["Connection"] == "close") break
     }
